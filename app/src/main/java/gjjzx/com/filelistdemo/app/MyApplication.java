@@ -11,6 +11,8 @@ public class MyApplication extends Application {
 
     //是否打开打印开关
     public static final boolean isLog = true;
+    public static final String DSTIP = "172.19.27.252";
+    public static final int DSTPORT = 7777;
 
     //全局context
     public static Context mContext;
