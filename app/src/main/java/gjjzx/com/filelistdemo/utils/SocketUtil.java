@@ -20,6 +20,7 @@ public class SocketUtil {
 
     private void SocketControl(boolean b) {
         if (b) {
+            LogUtil.INSTANCE.e("开");
             //开
             try {
                 sendSocket = new DatagramSocket();
@@ -41,12 +42,14 @@ public class SocketUtil {
 
     //发送
     public void postData(final String data) {
+
         //开线程发送
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    SocketControl(true);
+                    if (sendSocket == null || sendSocket.isClosed())
+                        SocketControl(true);
 
                     //server ip
                     InetAddress serverAddr = InetAddress.getByName(MyApplication.DSTIP);
@@ -57,27 +60,9 @@ public class SocketUtil {
                     DatagramPacket dp = new DatagramPacket(bytes, bytes.length, serverAddr, MyApplication.DSTPORT);
                     //发送
                     sendSocket.send(dp);
+                    if (listener != null)
+                        listener.onDataSending();
 
-                    //接收返回值
-                    byte[] buffer = new byte[1024];
-                    DatagramPacket inPacket = new DatagramPacket(buffer, buffer.length);
-                    try {
-                        //设置超时时间,3秒
-                        sendSocket.setSoTimeout(5000);
-                        sendSocket.receive(inPacket);
-
-                        String result = new String(inPacket.getData(), inPacket.getOffset(),
-                                inPacket.getLength());
-
-                        if (listener != null)
-                            listener.onReturnDataSuccess(result);
-                    } catch (Exception e) {
-                        //超时处理
-                        LogUtil.INSTANCE.e("服务器无应答，连接断开");
-                        SocketControl(false);
-                        if (listener != null)
-                            listener.onReturnDataOutTime();
-                    }
                 } catch (Exception e) {
                     LogUtil.INSTANCE.e("发送数据出错");
                     LogUtil.INSTANCE.e(e);
@@ -85,6 +70,29 @@ public class SocketUtil {
                         listener.onSendDataFail();
                     }
                 }
+
+                //接收返回值
+                byte[] buffer = new byte[1024];
+                DatagramPacket inPacket = new DatagramPacket(buffer, buffer.length);
+                try {
+                    //设置超时时间,3秒
+                    sendSocket.setSoTimeout(5000);
+                    sendSocket.receive(inPacket);
+
+                    String result = new String(inPacket.getData(), inPacket.getOffset(),
+                            inPacket.getLength());
+
+                    if (listener != null)
+                        listener.onReturnDataSuccess(result);
+                } catch (Exception e) {
+                    //超时处理
+                    LogUtil.INSTANCE.e("服务器无应答，连接断开");
+                    SocketControl(false);
+                    if (listener != null)
+                        listener.onReturnDataOutTime();
+                }
+
+
             }
         }).start();
     }
@@ -107,6 +115,9 @@ public class SocketUtil {
 
         //发送数据后，接收不到服务器返回值，超时
         void onReturnDataOutTime();
+
+        //正在发送数据
+        void onDataSending();
     }
 
 

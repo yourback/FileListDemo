@@ -1,7 +1,6 @@
 package gjjzx.com.filelistdemo.utils
 
 import android.widget.Toast
-
 import gjjzx.com.filelistdemo.app.MyApplication
 
 /**

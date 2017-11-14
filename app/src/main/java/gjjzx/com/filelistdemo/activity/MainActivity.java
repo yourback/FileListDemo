@@ -10,16 +10,24 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import net.lemonsoft.lemonbubble.LemonBubble;
 
+import java.lang.reflect.Type;
+import java.util.List;
+
 import gjjzx.com.filelistdemo.R;
+import gjjzx.com.filelistdemo.bean.FileInfo;
 import gjjzx.com.filelistdemo.utils.FileUtil;
 import gjjzx.com.filelistdemo.utils.LogUtil;
-import gjjzx.com.filelistdemo.utils.ToastUtil;
+import gjjzx.com.filelistdemo.utils.SocketUtil;
 
 public class MainActivity extends BaseActivity {
     private static final int WAITING = 10000;
     private static final int INITFINISH = 10001;
+    private static final int ERROR = 10002;
     //题头部分
     private TextView tv_title;
     private ImageView iv_titleRight;
@@ -35,6 +43,10 @@ public class MainActivity extends BaseActivity {
     private String[] fileNames;
 
 
+    //socket
+    private SocketUtil su;
+
+
     private Handler UIhandler = new Handler(new Handler.Callback() {
         @Override
         public boolean handleMessage(Message message) {
@@ -45,6 +57,9 @@ public class MainActivity extends BaseActivity {
                 case INITFINISH:
                     initView();
                     showSuccess((String) message.obj);
+                    break;
+                case ERROR:
+                    showError((String) message.obj);
                     break;
                 default:
             }
@@ -77,7 +92,57 @@ public class MainActivity extends BaseActivity {
                 Message msg = new Message();
                 msg.what = INITFINISH;
                 msg.obj = "刷新文件列表完毕";
-                UIhandler.sendEmptyMessage(INITFINISH);
+                UIhandler.sendMessageDelayed(msg, 2000);
+            }
+        });
+
+        su.setListener(new SocketUtil.onSocketListener() {
+            @Override
+            public void onBuildSendSocketFail() {
+                LogUtil.INSTANCE.e("socket建立出错");
+
+            }
+
+            @Override
+            public void onSendDataFail() {
+                LogUtil.INSTANCE.e("发送数据出错");
+            }
+
+            @Override
+            public void onReturnDataSuccess(String rd) {
+//                ToastUtil.INSTANCE.show("");
+                //显示差多少文件
+                LogUtil.INSTANCE.e(rd);
+                Type type = new TypeToken<List<FileInfo>>() {
+                }.getType();
+                List<FileInfo> fileInfoList = new Gson().fromJson(rd, type);
+
+                for (FileInfo fi : fileInfoList) {
+                    LogUtil.INSTANCE.e("文件名称:" + fi.getFileName());
+                    LogUtil.INSTANCE.e("文件大小:" + fi.getFileSize() + "字节");
+
+                }
+//                Message msg = new Message();
+//                msg.what = WAITING;
+//                msg.obj = "文件同步中...";
+//                UIhandler.sendMessageDelayed(msg, 1500);
+
+            }
+
+            @Override
+            public void onReturnDataOutTime() {
+                Message msg = new Message();
+                msg.what = ERROR;
+                msg.obj = "服务器无响应";
+                UIhandler.sendMessageDelayed(msg, 1500);
+            }
+
+            @Override
+            public void onDataSending() {
+                Message msg = new Message();
+                msg.what = WAITING;
+                msg.obj = "命令发送中...";
+                UIhandler.sendMessage(msg);
             }
         });
     }
@@ -97,6 +162,8 @@ public class MainActivity extends BaseActivity {
 
     private void findView() {
         LogUtil.INSTANCE.e("findView");
+        //socket
+        su = new SocketUtil();
         //题头
         tv_title = findViewById(R.id.title_tv);
         iv_titleRight = findViewById(R.id.title_sync);
@@ -114,7 +181,7 @@ public class MainActivity extends BaseActivity {
         iv_titleRight.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                ToastUtil.INSTANCE.show("文件同步");
+                su.postData("1");
             }
         });
     }
@@ -146,5 +213,10 @@ public class MainActivity extends BaseActivity {
     //成功
     private void showSuccess(String obj) {
         LemonBubble.showRight(this, obj, 1500);
+    }
+
+    //失败
+    private void showError(String obj) {
+        LemonBubble.showError(this, obj, 1500);
     }
 }

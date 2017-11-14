@@ -11,8 +11,8 @@ public class MyApplication extends Application {
 
     //是否打开打印开关
     public static final boolean isLog = true;
-    public static final String DSTIP = "172.19.27.252";
-    public static final int DSTPORT = 7777;
+    public static final String DSTIP = "10.1.75.252";
+    public static final int DSTPORT = 5000;
 
     //全局context
     public static Context mContext;
@@ -24,6 +24,7 @@ public class MyApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        mContext = this;
 
     }
 
