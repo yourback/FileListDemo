@@ -10,7 +10,7 @@ import java.io.File;
 
 public class FileUtil {
     //文件读取与写入
-    private static final String PATH = Environment.getExternalStorageDirectory() + "/file";
+    private static final String PATH = Environment.getExternalStorageDirectory() + "/FileListDemo";
 //    private static final String PATH = "/";
 
     //获得文件夹下的所有那文件名称
@@ -18,8 +18,13 @@ public class FileUtil {
         LogUtil.INSTANCE.e("获得所有文件名称");
         File file = new File(PATH);
         //如果文件不存在则新建
-        if (!file.exists())
+        if (!file.exists()){
+            LogUtil.INSTANCE.e("文件不存在，创建");
             file.mkdirs();
+        }else {
+            LogUtil.INSTANCE.e("文件已存在");
+        }
+
         //获得list的文件列表
         if (listener != null) {
             String[] list = file.list();

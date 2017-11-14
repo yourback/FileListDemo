@@ -1,12 +1,8 @@
 package gjjzx.com.filelistdemo.activity;
 
-import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -15,8 +11,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import net.lemonsoft.lemonbubble.LemonBubble;
-
-import java.io.File;
 
 import gjjzx.com.filelistdemo.R;
 import gjjzx.com.filelistdemo.utils.FileUtil;
@@ -69,10 +63,6 @@ public class MainActivity extends BaseActivity {
         initListener();
         //数据初始化，大部分数据都需要开线程去取
         initData();
-
-        ActivityCompat.requestPermissions(MainActivity.this, new String[]{android
-                .Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
-
     }
 
     private void initListener() {
@@ -157,25 +147,4 @@ public class MainActivity extends BaseActivity {
     private void showSuccess(String obj) {
         LemonBubble.showRight(this, obj, 1500);
     }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        //super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case 1:
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    //创建文件夹
-                    if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-                        File file = new File(Environment.getExternalStorageDirectory() + "/aa/bb/");
-                        if (!file.exists()) {
-                            file.mkdirs();
-                        }
-                    }
-                    break;
-                }
-        }
-    }
-
-
 }
