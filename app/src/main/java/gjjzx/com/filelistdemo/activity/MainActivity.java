@@ -19,33 +19,20 @@ import java.lang.reflect.Type;
 import java.util.List;
 
 import gjjzx.com.filelistdemo.R;
+import gjjzx.com.filelistdemo.bean.FileDiff;
 import gjjzx.com.filelistdemo.bean.FileInfo;
+import gjjzx.com.filelistdemo.diy.DialogFragment_SyncList;
 import gjjzx.com.filelistdemo.utils.FileUtil;
 import gjjzx.com.filelistdemo.utils.LogUtil;
 import gjjzx.com.filelistdemo.utils.SocketUtil;
+import gjjzx.com.filelistdemo.utils.ToastUtil;
 
-public class MainActivity extends BaseActivity {
+public class MainActivity extends BaseActivity implements DialogFragment_SyncList.onClickListener {
     private static final int WAITING = 10000;
     private static final int INITFINISH = 10001;
     private static final int ERROR = 10002;
-    //题头部分
-    private TextView tv_title;
-    private ImageView iv_titleRight;
-
-    //列表部分
-    private RecyclerView rv;
-    private RVAdapter rvAdapter;
-
-    //无文件布局
-    private LinearLayout linearLayout_nopic;
-
-    //文件列表list.
-    private String[] fileNames;
-
-
-    //socket
-    private SocketUtil su;
-
+    private static final int NOTNEEDSYNC = 10003;
+    private static final int NEEDSYNC = 10004;
 
     private Handler UIhandler = new Handler(new Handler.Callback() {
         @Override
@@ -61,6 +48,15 @@ public class MainActivity extends BaseActivity {
                 case ERROR:
                     showError((String) message.obj);
                     break;
+                case NOTNEEDSYNC:
+                    showSuccess((String) message.obj);
+                    break;
+                case NEEDSYNC:
+                    LemonBubble.hide();
+                    //显示fragmentdialog 刷新列表
+                    List<FileDiff> l = (List<FileDiff>) message.obj;
+                    df_SyncList.show(getFragmentManager(), l);
+                    break;
                 default:
             }
             return false;
@@ -68,34 +64,46 @@ public class MainActivity extends BaseActivity {
     });
 
 
+    //题头部分
+    private TextView tv_title;
+    private ImageView iv_titleRight;
+
+    //列表部分
+    private RecyclerView rv;
+    private RVAdapter rvAdapter;
+
+    //无文件布局
+    private LinearLayout linearLayout_nopic;
+
+    //文件列表list.
+    private List<String> fileNames;
+
+    //socket
+    private SocketUtil su;
+
+    //dialogfragment 同步列表
+    private DialogFragment_SyncList df_SyncList;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //设置控件
         findView();
+        //dialogfragment初始化
+        initDialogFragment();
         //设置需要的监听
         initListener();
         //数据初始化，大部分数据都需要开线程去取
         initData();
     }
 
+    private void initDialogFragment() {
+        df_SyncList = new DialogFragment_SyncList();
+    }
+
     private void initListener() {
         LogUtil.INSTANCE.e("initListener");
-        FileUtil.setListener(new FileUtil.FileUtilListener() {
-            @Override
-            public void getFileList(String[] strings) {
-                //获得文件列表后的回调方法
-                //刷新列表就行
-                fileNames = strings;
-                rvAdapter.refreshFileNameList(fileNames);
-                Message msg = new Message();
-                msg.what = INITFINISH;
-                msg.obj = "刷新文件列表完毕";
-                UIhandler.sendMessageDelayed(msg, 2000);
-            }
-        });
-
         su.setListener(new SocketUtil.onSocketListener() {
             @Override
             public void onBuildSendSocketFail() {
@@ -120,13 +128,25 @@ public class MainActivity extends BaseActivity {
                 for (FileInfo fi : fileInfoList) {
                     LogUtil.INSTANCE.e("文件名称:" + fi.getFileName());
                     LogUtil.INSTANCE.e("文件大小:" + fi.getFileSize() + "字节");
+                }
 
+                List<FileDiff> fileDiffList = FileUtil.CheckoutFiles(fileInfoList);
+                if (fileDiffList == null) {
+                    //如果null，说明完全相同则不返回
+                    Message m = new Message();
+                    m.what = NOTNEEDSYNC;
+                    m.obj = "文件相同，无需同步";
+                    UIhandler.sendMessageDelayed(m, 1500);
+                } else {
+                    Message message = new Message();
+                    message.what = NEEDSYNC;
+                    message.obj = fileDiffList;
+                    UIhandler.sendMessageDelayed(message, 1500);
                 }
 //                Message msg = new Message();
 //                msg.what = WAITING;
 //                msg.obj = "文件同步中...";
 //                UIhandler.sendMessageDelayed(msg, 1500);
-
             }
 
             @Override
@@ -150,11 +170,11 @@ public class MainActivity extends BaseActivity {
     //页面初始化
     private void initView() {
         LogUtil.INSTANCE.e("initView");
-        if (fileNames.length == 0) {
+        if (fileNames.size() == 0) {
             tv_title.setText("没有文件");
             linearLayout_nopic.setVisibility(View.VISIBLE);
         } else {
-            tv_title.setText("文件列表（" + fileNames.length + "）");
+            tv_title.setText("文件列表（" + fileNames.size() + "）");
             linearLayout_nopic.setVisibility(View.GONE);
         }
     }
@@ -198,7 +218,14 @@ public class MainActivity extends BaseActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                FileUtil.getFileList();
+                fileNames = FileUtil.getFileList();
+                //获得文件列表后的回调方法
+                //刷新列表就行
+                rvAdapter.refreshFileNameList(fileNames);
+                Message msg = new Message();
+                msg.what = INITFINISH;
+                msg.obj = "刷新文件列表完毕";
+                UIhandler.sendMessageDelayed(msg, 2000);
             }
         }).start();
     }
@@ -218,5 +245,14 @@ public class MainActivity extends BaseActivity {
     //失败
     private void showError(String obj) {
         LemonBubble.showError(this, obj, 1500);
+    }
+
+
+    //同步数据
+    @Override
+    public void onSubmitClick(List<FileDiff> fileDiffList) {
+        df_SyncList.dismiss();
+        ToastUtil.INSTANCE.show("确定同步");
+        su.getFiles(fileDiffList);
     }
 }

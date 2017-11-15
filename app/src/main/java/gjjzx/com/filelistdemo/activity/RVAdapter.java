@@ -6,6 +6,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import gjjzx.com.filelistdemo.R;
 
 /**
@@ -14,12 +17,13 @@ import gjjzx.com.filelistdemo.R;
 
 class RVAdapter extends RecyclerView.Adapter<RVAdapter.ViewHolder> {
 
-    private String[] fileNameList;
+    private List<String> fileNameList = new ArrayList<>();
 
     public RVAdapter() {
     }
 
-    public void refreshFileNameList(String[] strings) {
+    public void refreshFileNameList(List<String> strings) {
+        if (strings == null) return;
         fileNameList = strings;
         notifyDataSetChanged();
     }
@@ -32,7 +36,7 @@ class RVAdapter extends RecyclerView.Adapter<RVAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        holder.tv_adapter_fileName.setText(fileNameList[position]);
+        holder.tv_adapter_fileName.setText(fileNameList.get(position));
     }
 
     @Override

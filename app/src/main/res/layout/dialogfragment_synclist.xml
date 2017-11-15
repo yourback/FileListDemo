@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/dialogshape"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:gravity="center_horizontal"
+        android:text="是否同步以下内容"
+        android:textColor="#000"
+        android:textSize="20sp" />
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/dialogfragment_synclist_rv"
+        android:layout_width="match_parent"
+        android:layout_height="350dp"
+        android:layout_marginBottom="10dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/dialogfragment_synclist_cancel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/button_cancel"
+            android:text="取消"
+            android:textColor="#fff"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/dialogfragment_synclist_submit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/button_submit"
+            android:text="同步"
+            android:textColor="#fff"
+            android:textSize="18sp" />
+    </LinearLayout>
+</LinearLayout>
