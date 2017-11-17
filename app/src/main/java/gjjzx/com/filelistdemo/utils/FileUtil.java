@@ -2,7 +2,9 @@ package gjjzx.com.filelistdemo.utils;
 
 import android.os.Environment;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,8 +19,12 @@ import gjjzx.com.filelistdemo.bean.FileInfo;
 
 public class FileUtil {
     //文件读取与写入
-    private static final String PATH = Environment.getExternalStorageDirectory() + "/FileListDemo";
+    public static final String PATH = Environment.getExternalStorageDirectory() + "/FileListDemo";
 //    private static final String PATH = "/";
+
+    private static File getFile(String fileName) {
+        return new File(PATH + "//" + fileName);
+    }
 
     //获得文件夹下的所有那文件名称
     public static List<String> getFileList() {
@@ -28,18 +34,20 @@ public class FileUtil {
         if (!file.exists()) {
             LogUtil.INSTANCE.e("文件不存在，创建");
             file.mkdirs();
-            return null;
+            return new ArrayList<>();
         } else {
             LogUtil.INSTANCE.e("文件已存在");
         }
-        return Arrays.asList(file.list());
+        return file.list() == null ? new ArrayList<String>() : Arrays.asList(file.list());
     }
 
     //根据文件名称新建文件
-    public static void newFile(String fileName, int filelength) {
+    public static void newFile(String fileName, int filelength) throws IOException {
         File file = new File(PATH + "/" + fileName);
         if (!file.exists()) {
             //传送文件过来
+            FileWriter fw = new FileWriter(file);
+//            fw.write();
 
             try {
                 file.createNewFile();
@@ -52,6 +60,23 @@ public class FileUtil {
                 //传送文件过来
             }
         }
+    }
+
+    //往文件中写数据
+    public static void fileWrite(String fileName, String str) {
+        try {
+            File file = new File(PATH + "/" + fileName);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            FileWriter fw = new FileWriter(file, true);
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write(str);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
 
@@ -96,6 +121,14 @@ public class FileUtil {
             LogUtil.INSTANCE.e(d.toString());
 
         return fileDiffList.size() == 0 ? null : fileDiffList;
+    }
+
+    //删除文件
+    public static void delFile(String fileName) {
+        File f = getFile(fileName);
+        if (f.exists()) {
+            f.delete();
+        }
     }
 
 

@@ -19,10 +19,12 @@ def postFile():
     while True:
 
         # 接收连接
+        print("文件通道等待连接...")
         conn, addr = g_FileSocket.accept()
-        print(addr, " 已连接")
+        print(addr, "文件通道建立")
         # 接收此连接发来的信息
         while True:
+            print("等待文件名...")
             recvInfo = conn.recv(1024)
 
             # 收到消息进行解码处理
@@ -32,13 +34,24 @@ def postFile():
 
             if recvDataDecodeStr != "":
                 # 收到的消息原封不动返回
-                conn.send((recvDataDecodeStr + "\n").encode("utf-8"))
+                # conn.send((recvDataDecodeStr + "\n").encode("utf-8"))
                 # conn.sendall(recvData)
-                print("消息返回完毕")
+                # print("消息返回完毕")
 
-                # 如果发过来的消息是'bb'服务端主动断开与addr的连接
-                if recvDataDecodeStr == 'bb':
-                    print("断开连接", addr)
+                if recvDataDecodeStr.startswith('get'):
+                    filename = recvDataDecodeStr.split(" ")[1]
+                    print("准备发送：" + filename)
+                    currentFile = FileUtil.openFile(filename)
+                    while True:
+                        filedata = currentFile.read(1024 * 4)
+                        if not filedata:
+                            break
+                        conn.send(filedata)
+                    FileUtil.closeFile(currentFile)
+
+            # 如果发过来的消息是'bb'服务端主动断开与addr的连接
+                elif recvDataDecodeStr == 'bb':
+                    print("文件连接断开", addr)
                     conn.close()
                     break
 
@@ -59,10 +72,6 @@ def recvAction():
             print(rdd)
             # g_ActionSocket.sendto(f.encode('utf-8'), addr)
             g_ActionSocket.sendto(rdd.encode("utf-8"), addr)
-
-        elif rd.startswith('get'):
-            filename = rd.split(" ")[1]
-            print("准备发送：" + filename)
 
         elif rd == 'bb':
             break

@@ -1,8 +1,11 @@
 package gjjzx.com.filelistdemo.activity;
 
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
@@ -24,6 +27,7 @@ import gjjzx.com.filelistdemo.bean.FileInfo;
 import gjjzx.com.filelistdemo.diy.DialogFragment_SyncList;
 import gjjzx.com.filelistdemo.utils.FileUtil;
 import gjjzx.com.filelistdemo.utils.LogUtil;
+import gjjzx.com.filelistdemo.utils.PermisionUtils;
 import gjjzx.com.filelistdemo.utils.SocketUtil;
 import gjjzx.com.filelistdemo.utils.ToastUtil;
 
@@ -33,6 +37,10 @@ public class MainActivity extends BaseActivity implements DialogFragment_SyncLis
     private static final int ERROR = 10002;
     private static final int NOTNEEDSYNC = 10003;
     private static final int NEEDSYNC = 10004;
+
+    //    ------------------------------------------
+    public static final int FILESYNCING = 11000;
+    public static final int FILESYNCEND = 11001;
 
     private Handler UIhandler = new Handler(new Handler.Callback() {
         @Override
@@ -57,6 +65,17 @@ public class MainActivity extends BaseActivity implements DialogFragment_SyncLis
                     List<FileDiff> l = (List<FileDiff>) message.obj;
                     df_SyncList.show(getFragmentManager(), l);
                     break;
+
+//                    --------------------------------以下是socketutil的用的提示--------------------------------------------
+                case FILESYNCING:
+                    showWaiting("正在同步 " + (String) message.obj);
+                    break;
+
+                case FILESYNCEND:
+                    showSuccess("同步完毕");
+                    initData();
+                    break;
+
                 default:
             }
             return false;
@@ -88,6 +107,12 @@ public class MainActivity extends BaseActivity implements DialogFragment_SyncLis
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        //权限问题
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PermisionUtils.verifyStoragePermissions(this);
+        }
+
         //设置控件
         findView();
         //dialogfragment初始化
@@ -173,17 +198,22 @@ public class MainActivity extends BaseActivity implements DialogFragment_SyncLis
         if (fileNames.size() == 0) {
             tv_title.setText("没有文件");
             linearLayout_nopic.setVisibility(View.VISIBLE);
+            rv.setVisibility(View.GONE);
         } else {
             tv_title.setText("文件列表（" + fileNames.size() + "）");
             linearLayout_nopic.setVisibility(View.GONE);
+            rv.setVisibility(View.VISIBLE);
         }
+
+        //刷新列表就行
+        rvAdapter.refreshFileNameList(fileNames);
     }
 
 
     private void findView() {
         LogUtil.INSTANCE.e("findView");
         //socket
-        su = new SocketUtil();
+        su = new SocketUtil(UIhandler);
         //题头
         tv_title = findViewById(R.id.title_tv);
         iv_titleRight = findViewById(R.id.title_sync);
@@ -213,15 +243,14 @@ public class MainActivity extends BaseActivity implements DialogFragment_SyncLis
         //开启等待
         Message msg = new Message();
         msg.what = WAITING;
-        msg.obj = "文件列表初始化中...";
+        msg.obj = "文件列表刷新中...";
         UIhandler.sendMessage(msg);
         new Thread(new Runnable() {
             @Override
             public void run() {
                 fileNames = FileUtil.getFileList();
                 //获得文件列表后的回调方法
-                //刷新列表就行
-                rvAdapter.refreshFileNameList(fileNames);
+
                 Message msg = new Message();
                 msg.what = INITFINISH;
                 msg.obj = "刷新文件列表完毕";
@@ -254,5 +283,21 @@ public class MainActivity extends BaseActivity implements DialogFragment_SyncLis
         df_SyncList.dismiss();
         ToastUtil.INSTANCE.show("确定同步");
         su.getFiles(fileDiffList);
+    }
+
+
+//    -------------------------------------以下为动态权限申请--------------------------------------------------------
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        // 拒绝时, 关闭页面, 缺少主要权限, 无法运行
+        if (requestCode == PermisionUtils.REQUEST_EXTERNAL_STORAGE && grantResults[0] == PackageManager.PERMISSION_DENIED) {
+            ToastUtil.INSTANCE.show("缺少权限，APP无法运行");
+            finish();
+        } else {
+            initData();
+        }
     }
 }

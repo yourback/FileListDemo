@@ -1,9 +1,13 @@
 package gjjzx.com.filelistdemo.utils;
 
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
 
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
-import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
@@ -16,6 +20,7 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import gjjzx.com.filelistdemo.activity.MainActivity;
 import gjjzx.com.filelistdemo.app.MyApplication;
 import gjjzx.com.filelistdemo.bean.FileDiff;
 
@@ -26,8 +31,10 @@ import gjjzx.com.filelistdemo.bean.FileDiff;
 public class SocketUtil {
     private DatagramSocket sendSocket;
 
+    private Handler suHandler;
 
-    public SocketUtil() {
+    public SocketUtil(Handler handler) {
+        suHandler = handler;
     }
 
     private void SocketControl(boolean b) {
@@ -135,124 +142,106 @@ public class SocketUtil {
     //获得文件
     public void getFiles(final List<FileDiff> fileDiffList) {
         //开启监听
-
         // Activity按钮事件中
-        GetLogTask task = new GetLogTask();
-        task.execute(fileDiffList);
+        new GetLogTask().execute(fileDiffList);
     }
-
 
     //    ----------------------------------------以上是sockt udp 命令------------------------------------------------------
     //    ----------------------------------------以下是利用socket tcp 传输文件------------------------------------------------------
-//    private Socket socket;
-//    private InetSocketAddress isa;
-//
-//    private BufferedWriter out;
-//
-//    private BufferedReader in;
-//
-//    //持续监听服务器是否发来数据
-//    private class ReadThread extends Thread {
-//        @Override
-//        public void run() {
-//            super.run();
-//            try {
-//                //socket设置
-//                LogUtil.INSTANCE.e("接收文件socket开启");
-//                socket = new Socket();
-//                isa = new InetSocketAddress(MyApplication.DSTIP, MyApplication.DSTPORT);
-//                socket.connect(isa, 5000);
-//                LogUtil.INSTANCE.e("接收文件out开启");
-//                out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-//                LogUtil.INSTANCE.e("接收文件in开启");
-//                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-//
-//                while (true){
-//                    String data = in.readLine();
-//                }
-//
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//
-//
-//
-//
-//            //监听服务器返回数据
-//            while (true) {
-//                String data = recevieData();
-//                //data 大于1说明接收到数据了
-//                //如果data = null 说明socket 已经断开了
-//                //socket 断开后，监听结束，下次连接后再启动
-//                if (TextUtils.isEmpty(data)) {
-//                    if (connectedFail != null)
-//                        connectedFail.failFunc();
-//                    break;
-//                } else if (data.equals("bb")) {
-//                    MyApplication.isSocketConnected = false;
-//                    break;
-//                } else if (data.equals("sd")) {
-//                    if (shutDownListener != null)
-//                        shutDownListener.onShutDown();
-//                } else if (data.equals("sp")) {
-//                    if (stopPlayingListener != null) {
-//                        stopPlayingListener.onStopPlaying();
-//                    }
-//                } else {
-//                    //如果有返回的数据，说明点歌成功
-//                    //就不需要显示服务器无响应的提示了
-////                    MyApplication.isServerError = false;
-//                    //点歌成功，需要在界面上显示
-//                    Log.e(TAG, "点歌成功！服务器返回值：" + data);
-//                    if (OrderSongListener != null)
-//                        OrderSongListener.successFunc(data);
-//                }
-//            }
-//        }
-//    }
-
 
     // Activity类中嵌套类
-    public class GetLogTask extends AsyncTask<List<FileDiff>, Void, String> {
+    public class GetLogTask extends AsyncTask<List<FileDiff>, String, String> {
         @Override
         protected String doInBackground(List<FileDiff>... param) {
             List<FileDiff> fileDiffList = param[0];
-//            for (FileDiff fd : fileDiffList) {
-//                postData("get " + fd.getFileName());
-//            }
-            final FileDiff fileDiff1 = fileDiffList.get(0);
+
             try {
                 Socket s = new Socket(MyApplication.DSTIP, 7777);
+
                 InputStream inputStream = s.getInputStream();
-                DataInputStream input = new DataInputStream(inputStream);
 
                 final BufferedWriter out = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
 
-                new Timer().schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        try {
 
-                            out.write("get " + fileDiff1.getFileName());
-                            out.flush();
-                        } catch (IOException e) {
-                            LogUtil.INSTANCE.e("out 失败");
-                            e.printStackTrace();
+                for (final FileDiff fd : fileDiffList) {
+
+                    //通知界面改变    正在同步 xxx文件
+                    Message m = new Message();
+                    m.what = MainActivity.FILESYNCING;
+                    m.obj = fd.getFileName();
+                    suHandler.sendMessage(m);
+
+                    if (fd.isDel()) {
+                        FileUtil.delFile(fd.getFileName());
+                    } else if (fd.getFileSize() != fd.getOldSize() || fd.isAdd()) {
+
+
+
+                        LogUtil.INSTANCE.e("操作文件：" + fd.getFileName());
+
+                        //新建文件
+                        File file = new File(FileUtil.PATH + "/" + fd.getFileName());
+                        if (!file.exists()) {
+                            file.createNewFile();
                         }
+                        LogUtil.INSTANCE.e("新建文件输入输出流");
+                        FileOutputStream fos = new FileOutputStream(file, false);
+                        BufferedOutputStream bos = new BufferedOutputStream(fos);
+                        //在这里不规定长度，否则文件会长度出问题
+//                        BufferedOutputStream bos = new BufferedOutputStream(fos, 1024 * 4);
+
+                        new Timer().schedule(new TimerTask() {
+                            @Override
+                            public void run() {
+                                try {
+                                    LogUtil.INSTANCE.e("向服务器发送 get " + fd.getFileName() + " 命令");
+                                    out.write("get " + fd.getFileName());
+                                    out.flush();
+                                } catch (IOException e) {
+                                    LogUtil.INSTANCE.e("out 失败");
+                                    e.printStackTrace();
+                                }
+                            }
+                        }, 1000);
+
+                        byte buffer[] = new byte[1024 * 4];
+                        int temp = 0;
+                        LogUtil.INSTANCE.e("准备接收文件");
+                        // 从InputStream当中读取客户端所发送的数据
+                        //记录文件总长度
+                        long filelength = 0;
+                        while ((temp = inputStream.read(buffer)) != -1) {
+                            LogUtil.INSTANCE.e("接收文件包");
+                            bos.write(buffer, 0, temp);
+                            filelength += temp;
+                            if (filelength == fd.getFileSize())
+                                break;
+                        }
+                        LogUtil.INSTANCE.e(fd.getFileName() + "传输完毕");
+                        bos.close();
                     }
-                }, 1000);
-
-                byte[] b = new byte[10000];
-                while (true) {
-                    LogUtil.INSTANCE.e("监听中....");
-                    int length = input.read(b);
-                    String Msg = new String(b, 0, length, "gb2312");
-                    LogUtil.INSTANCE.e(Msg);
                 }
+                LogUtil.INSTANCE.e("全部文件传输完毕");
 
+
+                //关闭向服务器写的输出流
+                out.write("bb");
+                out.flush();
+                out.close();
+                //关闭服务器数据传入流
+                inputStream.close();
+                //关闭连接
+                s.close();
+                LogUtil.INSTANCE.e("关闭流");
+
+                //所有同步完毕
+                suHandler.sendEmptyMessage(MainActivity.FILESYNCEND);
             } catch (Exception ex) {
+                LogUtil.INSTANCE.e(ex.toString());
                 ex.printStackTrace();
             }
+
+
             return "";
         }
     }

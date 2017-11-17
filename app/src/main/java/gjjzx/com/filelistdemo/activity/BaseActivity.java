@@ -1,7 +1,6 @@
 package gjjzx.com.filelistdemo.activity;
 
 import android.os.Bundle;
-import android.os.PersistableBundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 
@@ -13,9 +12,10 @@ import gjjzx.com.filelistdemo.utils.LogUtil;
  */
 
 public class BaseActivity extends AppCompatActivity {
+
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState, @Nullable PersistableBundle persistentState) {
-        super.onCreate(savedInstanceState, persistentState);
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         LogUtil.INSTANCE.e(getClass().getSimpleName());
         ActivityCollector.addActivity(this);
     }
